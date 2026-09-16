@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35514.174 d17.12
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudiobookConverter.Api", "AudiobookConverter.Api\AudiobookConverter.Api.csproj", "{A312277F-2D6A-4EEA-B9AD-325CF2E67397}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudiobookConverter.Domain", "AudiobookConverter.Domain\AudiobookConverter.Domain.csproj", "{0FBB48B2-C452-45AB-9BB8-922B0A47D321}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudiobookConverter.Application", "AudiobookConverter.Application\AudiobookConverter.Application.csproj", "{D649AFD6-1B9A-4C6F-A99F-281F01E3DB74}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudiobookConverter.Infrastructure", "AudiobookConverter.Infrastructure\AudiobookConverter.Infrastructure.csproj", "{AA452AA6-9909-4003-BE64-9FE06EA0598B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A312277F-2D6A-4EEA-B9AD-325CF2E67397}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A312277F-2D6A-4EEA-B9AD-325CF2E67397}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A312277F-2D6A-4EEA-B9AD-325CF2E67397}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A312277F-2D6A-4EEA-B9AD-325CF2E67397}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0FBB48B2-C452-45AB-9BB8-922B0A47D321}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0FBB48B2-C452-45AB-9BB8-922B0A47D321}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0FBB48B2-C452-45AB-9BB8-922B0A47D321}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0FBB48B2-C452-45AB-9BB8-922B0A47D321}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D649AFD6-1B9A-4C6F-A99F-281F01E3DB74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D649AFD6-1B9A-4C6F-A99F-281F01E3DB74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D649AFD6-1B9A-4C6F-A99F-281F01E3DB74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D649AFD6-1B9A-4C6F-A99F-281F01E3DB74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA452AA6-9909-4003-BE64-9FE06EA0598B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA452AA6-9909-4003-BE64-9FE06EA0598B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA452AA6-9909-4003-BE64-9FE06EA0598B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA452AA6-9909-4003-BE64-9FE06EA0598B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

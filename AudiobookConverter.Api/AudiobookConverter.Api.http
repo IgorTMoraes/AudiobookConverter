@@ -1,0 +1,6 @@
+@AudiobookConverter.Api_HostAddress = http://localhost:5241
+
+GET {{AudiobookConverter.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
