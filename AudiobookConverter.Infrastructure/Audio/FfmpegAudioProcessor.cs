@@ -7,74 +7,157 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AudiobookConverter.Application.Abstractions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AudiobookConverter.Infrastructure.Audio
 {
     public class FfmpegAudioProcessor : IAudioProcessor
     {
-        private readonly string _ffmpegExecutablePath;
         private readonly ILogger<FfmpegAudioProcessor> _logger;
 
-        public FfmpegAudioProcessor(IConfiguration configuration, ILogger<FfmpegAudioProcessor> logger)
+        private string FfmpegPath => Path.Combine(
+            AppContext.BaseDirectory,
+            "TTS",
+            "bin",
+            "ffmpeg.exe"
+        );
+
+        public FfmpegAudioProcessor(ILogger<FfmpegAudioProcessor> logger)
         {
             _logger = logger;
-            var basePath = AppDomain.CurrentDomain.BaseDirectory;
-            _ffmpegExecutablePath = configuration["Audio:FfmpegPath"] ?? Path.Combine(basePath, "TTS", "bin", "ffmpeg.exe");
         }
 
-        public async Task ConvertWavToMp3Async(string inputWavPath, string outputMp3Path, CancellationToken cancellationToken = default)
+        public async Task ConvertWavToMp3Async(
+            string inputWavPath,
+            string outputMp3Path,
+            CancellationToken cancellationToken)
         {
-            var arguments = $"-y -i \"{inputWavPath}\" -codec:a libmp3lame -qscale:a 2 \"{outputMp3Path}\"";
-            await ExecuteFfmpegAsync(arguments, cancellationToken);
-        }
-
-        public async Task MergeWavFilesAsync(IEnumerable<string> inputWavPaths, string outputMp3Path, CancellationToken cancellationToken = default)
-        {
-            var wavList = inputWavPaths.ToList();
-            if (!wavList.Any())
-                throw new ArgumentException("Nenhum arquivo WAV fornecido para mesclar.", nameof(inputWavPaths));
-
-            var tempListFile = Path.Combine(Path.GetTempPath(), $"ffmpeg_list_{Guid.NewGuid()}.txt");
-            var fileLines = wavList.Select(path => $"file '{path.Replace("\\", "/")}'");
-            await File.WriteAllLinesAsync(tempListFile, fileLines, Encoding.UTF8, cancellationToken);
-
-            try
+            if (!File.Exists(FfmpegPath))
             {
-                var arguments = $"-y -f concat -safe 0 -i \"{tempListFile}\" -codec:a libmp3lame -qscale:a 2 \"{outputMp3Path}\"";
-                await ExecuteFfmpegAsync(arguments, cancellationToken);
-            }
-            finally
-            {
-                if (File.Exists(tempListFile))
-                {
-                    File.Delete(tempListFile);
-                }
-            }
-        }
+                _logger.LogError(
+                    "FFmpeg não encontrado em: {FfmpegPath}",
+                    FfmpegPath);
 
-        private async Task ExecuteFfmpegAsync(string arguments, CancellationToken cancellationToken)
-        {
+                throw new FileNotFoundException(
+                    $"FFmpeg não encontrado em: {FfmpegPath}",
+                    FfmpegPath);
+            }
+
             var startInfo = new ProcessStartInfo
             {
-                FileName = _ffmpegExecutablePath,
-                Arguments = arguments,
+                FileName = FfmpegPath,
+                Arguments = $"-i \"{inputWavPath}\" -c:a libmp3lame -q:a 2 \"{outputMp3Path}\" -y",
+                RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true,
-                StandardErrorEncoding = Encoding.UTF8
+                CreateNoWindow = true
             };
 
             using var process = new Process { StartInfo = startInfo };
 
             process.Start();
+
             var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
             await process.WaitForExitAsync(cancellationToken);
+
             var errorOutput = await errorTask;
 
             if (process.ExitCode != 0)
-                throw new InvalidOperationException($"Falha no FFmpeg: {errorOutput}");
+            {
+                _logger.LogError(
+                    "Falha ao converter WAV para MP3. Erro: {Error}",
+                    errorOutput);
+
+                throw new InvalidOperationException(
+                    $"Falha no FFmpeg: {errorOutput}");
+            }
+        }
+
+        public async Task MergeWavFilesAsync(
+            IEnumerable<string> wavFiles,
+            string outputMp3Path,
+            CancellationToken cancellationToken)
+        {
+            var filesList = wavFiles.ToList();
+
+            if (filesList.Count == 0)
+            {
+                throw new ArgumentException(
+                    "A lista de arquivos de áudio não pode estar vazia.",
+                    nameof(wavFiles));
+            }
+
+            if (!File.Exists(FfmpegPath))
+            {
+                _logger.LogError(
+                    "FFmpeg não encontrado em: {FfmpegPath}",
+                    FfmpegPath);
+
+                throw new FileNotFoundException(
+                    $"FFmpeg não encontrado em: {FfmpegPath}",
+                    FfmpegPath);
+            }
+
+            var listFilePath = Path.Combine(
+                Path.GetTempPath(),
+                $"ffmpeg_list_{Guid.NewGuid()}.txt");
+
+            try
+            {
+                // Encoding UTF-8 sem BOM para o FFmpeg ler corretamente
+                var utf8WithoutBom = new UTF8Encoding(false);
+                var content = new StringBuilder();
+
+                foreach (var wavFile in filesList)
+                {
+                    var formattedPath = wavFile.Replace(@"\", "/");
+                    content.AppendLine($"file '{formattedPath}'");
+                }
+
+                await File.WriteAllTextAsync(
+                    listFilePath,
+                    content.ToString(),
+                    utf8WithoutBom,
+                    cancellationToken);
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = FfmpegPath,
+                    Arguments = $"-f concat -safe 0 -i \"{listFilePath}\" -c:a libmp3lame -q:a 2 \"{outputMp3Path}\" -y",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = new Process { StartInfo = startInfo };
+
+                process.Start();
+
+                var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+                await process.WaitForExitAsync(cancellationToken);
+
+                var errorOutput = await errorTask;
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogError(
+                        "Falha ao unir arquivos WAV no FFmpeg. Erro: {Error}",
+                        errorOutput);
+
+                    throw new InvalidOperationException(
+                        $"Falha no FFmpeg: {errorOutput}");
+                }
+            }
+            finally
+            {
+                if (File.Exists(listFilePath))
+                {
+                    File.Delete(listFilePath);
+                }
+            }
         }
     }
 }

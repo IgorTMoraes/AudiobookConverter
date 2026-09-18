@@ -22,7 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="TTS\**\*">
+    <None Update="TTS\bin\**\*">
+     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+
+    <None Update="TTS\models\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
