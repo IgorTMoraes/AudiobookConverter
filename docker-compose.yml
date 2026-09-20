@@ -1,0 +1,8 @@
+﻿version: '3.8'
+
+services:
+  audiobookconverter.api:
+    image: ${DOCKER_REGISTRY-}audiobookconverterapi
+    build:
+      context: .
+      dockerfile: AudiobookConverter.Api/Dockerfile
