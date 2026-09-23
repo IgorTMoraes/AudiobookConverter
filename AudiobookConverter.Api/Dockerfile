@@ -1,23 +1,31 @@
-# Esta fase é usada como base de execução
+# Estágio Base com FFmpeg e Piper para Linux
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
-
-# Define a variável de ambiente para o Kestrel escutar na porta 8080
-ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
-# Instala o FFmpeg e dependências necessárias para áudio e downloads
 USER root
+# 1. Instala o FFmpeg e ferramentas utilitárias
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     curl \
     ca-certificates \
+    tar \
+    libgomp1 \
+    espeak-ng \
     && rm -rf /var/lib/apt/lists/*
 
-# Cria os diretórios necessários com permissão de escrita
+# Baixar e extrair o Piper
+RUN curl -L .../piper_linux_x86_64.tar.gz -o piper.tar.gz \
+    && mkdir -p /opt/piper \
+    && tar -xzf piper.tar.gz -C /opt/piper --strip-components=1 \
+    && chmod +x /opt/piper/piper \
+    && ln -s /opt/piper/piper /usr/local/bin/piper
+ENV LD_LIBRARY_PATH="/opt/piper:${LD_LIBRARY_PATH}"
+
+# Criar diretórios com permissão de escrita
 RUN mkdir -p /app/storage /app/TTS/models /app/database && chmod -R 777 /app/storage /app/TTS /app/database
 
-# Esta fase é usada para compilar o projeto de serviço
+# Estágio de Build do .NET
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
@@ -30,13 +38,15 @@ COPY . .
 WORKDIR "/src/AudiobookConverter.Api"
 RUN dotnet build "./AudiobookConverter.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# Esta fase é usada para publicar o projeto de serviço
+# Estágio de Publicação
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./AudiobookConverter.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# Esta fase é a final, usada em produção ou no VS em modo normal
+# Estágio Final
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Copiar explicitamente os modelos ONNX
+COPY AudiobookConverter.Api/TTS/models /app/TTS/models
 ENTRYPOINT ["dotnet", "AudiobookConverter.Api.dll"]

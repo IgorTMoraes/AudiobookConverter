@@ -15,16 +15,24 @@ namespace AudiobookConverter.Infrastructure.Audio
     {
         private readonly ILogger<FfmpegAudioProcessor> _logger;
 
-        private string FfmpegPath => Path.Combine(
-            AppContext.BaseDirectory,
-            "TTS",
-            "bin",
-            "ffmpeg.exe"
-        );
+        // No Linux (Docker), 'ffmpeg' é instalado globalmente no sistema pelo apt-get.
+        // No Windows, usa o arquivo local ffmpeg.exe na pasta TTS/bin/.
+        private string FfmpegPath => OperatingSystem.IsWindows()
+            ? Path.Combine(AppContext.BaseDirectory, "TTS", "bin", "ffmpeg.exe")
+            : "ffmpeg";
 
         public FfmpegAudioProcessor(ILogger<FfmpegAudioProcessor> logger)
         {
             _logger = logger;
+        }
+
+        private void ValidateFfmpegExists()
+        {
+            if (OperatingSystem.IsWindows() && !File.Exists(FfmpegPath))
+            {
+                _logger.LogError("FFmpeg não encontrado em: {FfmpegPath}", FfmpegPath);
+                throw new FileNotFoundException($"FFmpeg não encontrado em: {FfmpegPath}", FfmpegPath);
+            }
         }
 
         public async Task ConvertWavToMp3Async(
@@ -32,16 +40,7 @@ namespace AudiobookConverter.Infrastructure.Audio
             string outputMp3Path,
             CancellationToken cancellationToken)
         {
-            if (!File.Exists(FfmpegPath))
-            {
-                _logger.LogError(
-                    "FFmpeg não encontrado em: {FfmpegPath}",
-                    FfmpegPath);
-
-                throw new FileNotFoundException(
-                    $"FFmpeg não encontrado em: {FfmpegPath}",
-                    FfmpegPath);
-            }
+            ValidateFfmpegExists();
 
             var startInfo = new ProcessStartInfo
             {
@@ -65,12 +64,8 @@ namespace AudiobookConverter.Infrastructure.Audio
 
             if (process.ExitCode != 0)
             {
-                _logger.LogError(
-                    "Falha ao converter WAV para MP3. Erro: {Error}",
-                    errorOutput);
-
-                throw new InvalidOperationException(
-                    $"Falha no FFmpeg: {errorOutput}");
+                _logger.LogError("Falha ao converter WAV para MP3. Erro: {Error}", errorOutput);
+                throw new InvalidOperationException($"Falha no FFmpeg: {errorOutput}");
             }
         }
 
@@ -83,21 +78,10 @@ namespace AudiobookConverter.Infrastructure.Audio
 
             if (filesList.Count == 0)
             {
-                throw new ArgumentException(
-                    "A lista de arquivos de áudio não pode estar vazia.",
-                    nameof(wavFiles));
+                throw new ArgumentException("A lista de arquivos de áudio não pode estar vazia.", nameof(wavFiles));
             }
 
-            if (!File.Exists(FfmpegPath))
-            {
-                _logger.LogError(
-                    "FFmpeg não encontrado em: {FfmpegPath}",
-                    FfmpegPath);
-
-                throw new FileNotFoundException(
-                    $"FFmpeg não encontrado em: {FfmpegPath}",
-                    FfmpegPath);
-            }
+            ValidateFfmpegExists();
 
             var listFilePath = Path.Combine(
                 Path.GetTempPath(),
@@ -105,7 +89,6 @@ namespace AudiobookConverter.Infrastructure.Audio
 
             try
             {
-                // Encoding UTF-8 sem BOM para o FFmpeg ler corretamente
                 var utf8WithoutBom = new UTF8Encoding(false);
                 var content = new StringBuilder();
 
@@ -143,12 +126,8 @@ namespace AudiobookConverter.Infrastructure.Audio
 
                 if (process.ExitCode != 0)
                 {
-                    _logger.LogError(
-                        "Falha ao unir arquivos WAV no FFmpeg. Erro: {Error}",
-                        errorOutput);
-
-                    throw new InvalidOperationException(
-                        $"Falha no FFmpeg: {errorOutput}");
+                    _logger.LogError("Falha ao unir arquivos WAV no FFmpeg. Erro: {Error}", errorOutput);
+                    throw new InvalidOperationException($"Falha no FFmpeg: {errorOutput}");
                 }
             }
             finally
