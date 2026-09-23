@@ -3,6 +3,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 EXPOSE 8080
 
+# TLS é terminado na borda (Render/proxy); o container serve apenas HTTP.
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    ASPNETCORE_HTTPS_PORTS=
+
 USER root
 # 1. Instala o FFmpeg e ferramentas utilitárias
 RUN apt-get update && apt-get install -y \
@@ -15,9 +19,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Baixar e extrair o Piper
-RUN curl -L .../piper_linux_x86_64.tar.gz -o piper.tar.gz \
+ARG PIPER_VERSION=2023.11.14-2
+RUN curl -L "https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_linux_x86_64.tar.gz" -o piper.tar.gz \
     && mkdir -p /opt/piper \
     && tar -xzf piper.tar.gz -C /opt/piper --strip-components=1 \
+    && rm piper.tar.gz \
     && chmod +x /opt/piper/piper \
     && ln -s /opt/piper/piper /usr/local/bin/piper
 ENV LD_LIBRARY_PATH="/opt/piper:${LD_LIBRARY_PATH}"
